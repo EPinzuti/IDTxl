@@ -2,6 +2,16 @@ from pkg_resources import resource_filename
 import jpype as jp
 
 
+def is_parallel(self, estimator_name):
+    """Check if estimator can estimate CMI for multiple chunks in parallel."""
+    parallel_estimators = {'opencl_kraskov': True,
+                           'jidt_kraskov': False}
+    try:
+        return parallel_estimators[estimator_name]
+    except KeyError:
+        raise KeyError('Unknown estimator name.')
+        
+
 def jidt_kraskov(self, source, target, opts):
     """Calculate transfer entropy with JIDT's Kraskov implementation.
 
