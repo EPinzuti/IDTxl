@@ -20,8 +20,74 @@ class Estimator(object):
             new_name = func.__name__
         return setattr(cls, new_name, types.MethodType(func, cls))
 
+    def __init__(self):
+        self.addMethodAs(is_parallel, "is_parallel")
+
     def get_estimator(self):
         return self.estimator_name
+
+    def estimate_mult(self, n_chunks=1, options=None, re_use=None, **data):
+        """Estimate measure for multiple data sets (chunks).
+
+        Test if the estimator used provides parallel capabilities; if so, 
+        estimate measure for multiple data sets ('chunks') in parallel. 
+        Otherwise, iterate over individual chunks.
+
+        The number of variables in data depends on the measure to be estimated, 
+        e.g., 2 for mutual information and 3 for TE.
+
+        Each entry in data should be a numpy array with realisations, where the
+        first axis is assumed to represent realisations (over chunks), while 
+        the second axis is the variable dimension. 
+
+        Each numpy array with realisations can hold either the realisations for 
+        multiple chunks or can hold the realisation for a single chunk, which 
+        gets replicated for parallel estimation and gets re-used for iterative
+        estimation, in order to save memory. The variables for re-use are 
+        provided in re-use as list of dictionary keys indicating entries in 
+        data for re-use.
+
+        Args:
+            self : instance of Estimator_cmi            
+            n_chunks : int
+                number of data chunks
+            options : dict
+                sets estimation parameters
+            re_use : list of keys
+                realisatins to be re-used
+            data: dict of numpy arrays
+                realisations of random random variables 
+
+        Returns:
+            numpy array of estimated values for each data set
+        """
+        if re_use is None:
+            re_use = []
+
+        if self.is_parallel(self.estimator_name):
+            for k in re_use:
+                data[k] = np.tile(data[k], (n_chunks, 1))
+            return self.estimate(self, **data, n_chunks=1, opts=options)  # TODO check order of arguments, change that also in the called function      
+        
+        else:  # cut data into chunks and estimate iteratively          
+            chunk_size = data[data.keys()[0]].shape[0] / n_chunks
+            idx_1 = 0
+            idx_2 = chunk_size
+            res = np.empty((n_chunks))            
+            slice_vars = list(set(data.keys()).difference(set(re_use)))
+            i = 0
+            for c in range(n_chunks):
+                chunk_data = {}
+                for k in slice_vars:  # NOTE: I AM NOT CREATING A DEEP COPY HERE!
+                    chunk_data[k] = data[k][idx_1:idx_2, :]
+                for k in re_use:
+                    chunk_data[k] = data[k]
+                res[i] = self.estimate(self, **chunk_data, opts=options)  # TODO check order of arguments, change that also in the called function      
+                idx_1 = idx_2
+                idx_2 += chunk_size
+                i += 1
+
+            return res
 
 
 class Estimator_te(Estimator):
@@ -36,6 +102,7 @@ class Estimator_te(Estimator):
         else:
             self.estimator_name = estimator_name
             self.addMethodAs(estimator, "estimate")
+        super().__init__()
 
 
 class Estimator_cmi(Estimator):
@@ -50,6 +117,7 @@ class Estimator_cmi(Estimator):
         else:
             self.estimator_name = estimator_name
             self.addMethodAs(estimator, "estimate")
+        super().__init__()
 
 
 class Estimator_mi(Estimator):
@@ -64,10 +132,11 @@ class Estimator_mi(Estimator):
         else:
             self.estimator_name = estimator_name
             self.addMethodAs(estimator, "estimate")
+        super().__init__()
 
 
 if __name__ == "__main__":
-    """ Do a quick check if eveything is called correctly."""
+    """ Do a quick check if everything is called correctly."""
 
     te_estimator = Estimator_te("jidt_kraskov")
     mi_estimator = Estimator_mi("jidt_kraskov")

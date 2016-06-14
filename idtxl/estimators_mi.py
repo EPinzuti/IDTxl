@@ -5,6 +5,16 @@ from scipy.special import digamma
 from . import neighbour_search_opencl as nsocl
 
 
+def is_parallel(self, estimator_name):
+    """Check if estimator can estimate CMI for multiple chunks in parallel."""
+    parallel_estimators = {'opencl_kraskov': True,
+                           'jidt_kraskov': False}
+    try:
+        return parallel_estimators[estimator_name]
+    except KeyError:
+        raise KeyError('Unknown estimator name.')
+
+
 def opencl_kraskov(self, var1, var2, opts=None):
     """Calculate mutual information using an opencl Kraskov implementation.
 
