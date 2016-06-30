@@ -9,11 +9,11 @@ import numpy as np
 from scipy.special import digamma
 from . import idtxl_utils as utils
 from . import neighbour_search_opencl as nsocl
-VERBOSE = False
+VERBOSE = True
 
 def is_parallel(self, estimator_name):
     """Check if estimator can estimate CMI for multiple chunks in parallel."""
-    # To add a new parallel estimator, add estimator name to the following 
+    # To add a new parallel estimator, add estimator name to the following
     # dictionary and set the value to True.
     parallel_estimators = {'opencl_kraskov': True,
                            'jidt_kraskov': False}
@@ -56,7 +56,7 @@ def opencl_kraskov(self, var1, var2, conditional=None, n_chunks=1, opts=None):
               range searches (default='ACT', the autocorr. time of the target)
             - 'noise_level' - random noise added to the data (default=1e-8)
             - 'gpuid' - device ID (default=0)
-            
+
     Returns:
         float
             conditional mutual information
@@ -94,7 +94,7 @@ def opencl_kraskov(self, var1, var2, conditional=None, n_chunks=1, opts=None):
 
 # If no conditional is passed, compute and return the mi:
 # this code is a copy of the one in estimatos_mi look there for comments
-    if conditional == None:
+    if conditional is None:
         if VERBOSE:
             print('no conditional variable - falling back to MI estimation')
         var1 += np.random.normal(scale=noise_level, size=var1.shape)
@@ -297,6 +297,7 @@ def jidt_kraskov(self, var1, var2, conditional, opts=None):
     else:
         cond_dim = conditional.shape[1]
         assert(conditional.size != 0), 'Conditional Array is empty.'
+    assert(var1.shape[0] == var2.shape[0]), 'Unequal number of observations.'
     calc.initialise(var1.shape[1], var2.shape[1], cond_dim)
     calc.setObservations(var1, var2, conditional)
     return calc.computeAverageLocalOfObservations()
