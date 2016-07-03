@@ -68,7 +68,7 @@ class Estimator(object):
             return self.estimate(n_chunks=n_chunks, opts=options, **data)  # TODO check order of arguments, change that also in the called function
 
         else:  # cut data into chunks and estimate iteratively
-            chunk_size = data[list(data.keys())[0]].shape[0] / n_chunks
+            chunk_size = data['var1'].shape[0] / n_chunks
             idx_1 = 0
             idx_2 = chunk_size
             res = np.empty((n_chunks))
