@@ -68,31 +68,15 @@ def opencl_kraskov(self, var1, var2, conditional=None, n_chunks=1, opts=None):
     """
     if opts is None:
         opts = {}
-    try:
-        kraskov_k = int(opts['kraskov_k'])
-    except KeyError:
-        kraskov_k = int(4)
-    try:
-        theiler_t = int(opts['theiler_t'])
-    except KeyError:
-        theiler_t = int(0)
-    try:
-        noise_level = int(opts['noise_level'])
-    except KeyError:
-        noise_level = 1e-8
-    try:
-        gpuid = int(opts['gpuid'])
-    except KeyError:
-        gpuid = int(0)
+    elif type(opts) is not dict:
+        raise TypeError('Opts should be a dictionary.')
 
-    # try:
-    #     nchunkspergpu = int(opts['n_chunks'])
-    # except KeyError:
-    #     nchunkspergpu = int(1)
-    print(n_chunks)
-    nchunkspergpu = n_chunks  # TODO is there a case where it makes sense to have
-                              # this two distinct parameters?
-    assert type(nchunkspergpu) is int, 'No chunks per GPU must be an int.'
+    # Get defaults for estimator options
+    kraskov_k = int(opts.get('kraskov_k', 4))
+    theiler_t = int(opts.get('theiler_t', 0)) # TODO necessary?
+    noise_level = np.float32(opts.get('noise_level', 1e-8))
+    gpuid = int(opts.get('gpuid', 0))
+    nchunkspergpu = int(opts.get('nchunkspergpu', 1))
 
 # If no conditional is passed, compute and return the mi:
 # this code is a copy of the one in estimatos_mi look there for comments
@@ -251,35 +235,17 @@ def jidt_kraskov(self, var1, var2, conditional, opts=None):
     """
     if opts is None:
         opts = {}
-    try:
-        kraskov_k = str(opts['kraskov_k'])
-    except KeyError:
-        kraskov_k = str(4)
-    try:
-        if opts['normalise']:
-            normalise = 'true'
-        else:
-            normalise = 'false'
-    except KeyError:
-        normalise = 'false'
-    try:
-        theiler_t = str(opts['theiler_t'])
-    except KeyError:
-        # TODO this is no good bc we don't know if var1 is the target:
-        theiler_t = str(utils.autocorrelation(var1))
-    try:
-        noise_level = str(opts['noise_level'])
-    except KeyError:
-        noise_level = str(1e-8)
-    try:
-        num_threads = str(opts['num_threads'])
-    except KeyError:
-        num_threads = 'USE_ALL'
-    try:
-        debug = opts['debug']
-    except KeyError:
-        debug = False
+    elif type(opts) is not dict:
+        raise TypeError('Opts should be a dictionary.')
 
+    # Get defaults for estimator options
+    kraskov_k = str(opts.get('kraskov_k', str(4)))
+    normalise = str(opts.get('normalise', 'false'))
+    theiler_t = str(opts.get('theiler_t', 0)) # TODO necessary?
+    noise_level = str(opts.get('noise_level', 1e-8))
+    num_threads = str(opts.get('num_threads', 'USE_ALL'))
+    # debug = opts.get('debug', 'false')
+    
     jarLocation = resource_filename(__name__, 'infodynamics.jar')
     if not jp.isJVMStarted():
         jp.startJVM(jp.getDefaultJVMPath(), '-ea', ('-Djava.class.path=' +
@@ -293,7 +259,7 @@ def jidt_kraskov(self, var1, var2, conditional, opts=None):
     calc.setProperty('DYN_CORR_EXCL', theiler_t)
     calc.setProperty('NOISE_LEVEL_TO_ADD', noise_level)
     calc.setProperty('NUM_THREADS', num_threads)
-    calc.setDebug(debug)
+    # calc.setDebug(debug)
 
     if conditional is None:
         cond_dim = 0

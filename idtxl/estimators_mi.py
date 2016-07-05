@@ -58,26 +58,15 @@ def opencl_kraskov(self, var1, var2, opts=None):
     """
     if opts is None:
         opts = {}
-    try:
-        kraskov_k = int(opts['kraskov_k'])
-    except KeyError:
-        kraskov_k = int(4)
-    try:
-        theiler_t = int(opts['theiler_t']) # TODO neccessary?
-    except KeyError:
-        theiler_t = int(0)
-    try:
-        noise_level = int(opts['noise_level'])
-    except KeyError:
-        noise_level = np.float32(1e-8)
-    try:
-        gpuid = int(opts['gpuid'])
-    except KeyError:
-        gpuid = int(0)
-    try:
-        nchunkspergpu = int(opts['nchunkspergpu'])
-    except KeyError:
-        nchunkspergpu = int(1)
+    elif type(opts) is not dict:
+        raise TypeError('Opts should be a dictionary.')
+
+    # Get defaults for estimator options
+    kraskov_k = int(opts.get('kraskov_k', 4))
+    theiler_t = int(opts.get('theiler_t', 0)) # TODO necessary?
+    noise_level = np.float32(opts.get('noise_level', 1e-8))
+    gpuid = int(opts.get('gpuid', 0))
+    nchunkspergpu = int(opts.get('nchunkspergpu', 1))    
 
     var1 += np.random.normal(scale=noise_level, size=var1.shape)
     var2 += np.random.normal(scale=noise_level, size=var2.shape)
@@ -150,6 +139,13 @@ def jidt_kraskov(self, var1, var2, opts=None):
 
             - 'kraskov_k' - no. nearest neighbours for KNN search (default=4)
             - 'normalise' - z-standardise data (default=False)
+            - 'theiler_t' - no. next temporal neighbours ignored in KNN and
+              range searches (default='ACT', the autocorr. time of the target)
+            - 'noise_level' - random noise added to the data (default=1e-8)
+            - 'local_values' - return local TE instead of average TE 
+              (default=False)
+            - 'num_threads' - no. CPU threads used for estimation
+            (default='USE_ALL', this uses all available cores on the machine!)
 
     Returns:
         float
@@ -162,21 +158,19 @@ def jidt_kraskov(self, var1, var2, opts=None):
         MI estimator does add noise to the data as a default. To make analysis
         runs replicable set noise_level to 0.
     """
-
     if opts is None:
         opts = {}
-    try:
-        kraskov_k = str(opts['kraskov_k'])
-    except KeyError:
-        kraskov_k = str(4)
-    try:
-        if opts['normalise']:
-            normalise = 'true'
-        else:
-            normalise = 'false'
-    except KeyError:
-        normalise = 'false'
+    elif type(opts) is not dict:
+        raise TypeError('Opts should be a dictionary.')
 
+    # Get defaults for estimator options
+    kraskov_k = str(opts.get('kraskov_k', 4))
+    normalise = str(opts.get('normalise', 'false'))
+    theiler_t = str(opts.get('theiler_t', 0)) # TODO necessary?
+    noise_level = str(opts.get('noise_level', 1e-8))
+    local_values = opts.get('local_values', False)
+    num_threads = str(opts.get('num_threads', 'USE_ALL'))
+    
     jarLocation = resource_filename(__name__, 'infodynamics.jar')
     if not jp.isJVMStarted():
         jp.startJVM(jp.getDefaultJVMPath(), '-ea', ('-Djava.class.path=' +
@@ -186,6 +180,12 @@ def jidt_kraskov(self, var1, var2, opts=None):
     calc = calcClass()
     calc.setProperty('NORMALISE', normalise)
     calc.setProperty('k', kraskov_k)
+    calc.setProperty('NOISE_LEVEL_TO_ADD', noise_level)
+    calc.setProperty('DYN_CORR_EXCL', theiler_t)
+    calc.setProperty('NUM_THREADS', num_threads)
     calc.initialise(var1.shape[1], var2.shape[1])
     calc.setObservations(var1, var2)
-    return calc.computeAverageLocalOfObservations()
+    if local_values:
+        return calc.computeLocalOfPreviousObservations()
+    else:
+        return calc.computeAverageLocalOfObservations()

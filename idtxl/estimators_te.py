@@ -55,6 +55,8 @@ def jidt_kraskov(self, source, target, opts):
             - 'theiler_t' - no. next temporal neighbours ignored in KNN and
               range searches (default='ACT', the autocorr. time of the target)
             - 'noise_level' - random noise added to the data (default=1e-8)
+            - 'local_values' - return local TE instead of average TE 
+              (default=False)
             - 'history_source' - number of samples in the source's past to
               consider
             - 'history_target' - number of samples in the target's past to
@@ -67,6 +69,9 @@ def jidt_kraskov(self, source, target, opts):
     Returns:
         float
             transfer entropy from source to target
+        OR
+        numpy array of floats
+            local transfer entropy if local_values is set
 
     Note:
         Some technical details: JIDT normalises over realisations, IDTxl
@@ -77,45 +82,23 @@ def jidt_kraskov(self, source, target, opts):
     """
     if opts is None:
         opts = {}
-    try:
-        kraskov_k = str(opts['kraskov_k'])
-    except KeyError:
-        kraskov_k = str(4)
-    try:
-        if opts['normalise']:
-            normalise = 'true'
-        else:
-            normalise = 'false'
-    except KeyError:
-        normalise = 'false'
-    try:
-        theiler_t = str(opts['theiler_t'])
-    except KeyError:
-        theiler_t = str(0)
-    try:
-        noise_level = str(opts['noise_level'])
-    except KeyError:
-        noise_level = str(1e-8)
+    elif type(opts) is not dict:
+        raise TypeError('Opts should be a dictionary.')
+
+    # Get defaults for estimator options
+    kraskov_k = str(opts.get('kraskov_k', 4))
+    normalise = str(opts.get('normalise', 'false'))
+    theiler_t = str(opts.get('theiler_t', 0)) # TODO necessary?
+    noise_level = str(opts.get('noise_level', 1e-8))
+    local_values = opts.get('local_values', False)
+    tau_target = opts.get('tau_target', 1)
+    tau_source = opts.get('tau_source', 1)
+    delay = opts.get('source_target_delay', 1)
     try:
         history_target = opts['history_target']
     except KeyError:
         raise RuntimeError('No history was provided for TE estimation.')
-    try:
-        history_source = opts['history_source']
-    except KeyError:
-        history_source = history_target
-    try:
-        tau_target = opts['tau_target']
-    except KeyError:
-        tau_target = 1
-    try:
-        tau_source = opts['tau_source']
-    except KeyError:
-        tau_source = 1
-    try:
-        delay = opts['source_target_delay']
-    except KeyError:
-        delay = 1
+    history_source = opts.get('history_source', history_target)    
 
     jarLocation = resource_filename(__name__, 'infodynamics.jar')
     if not jp.isJVMStarted():
@@ -133,4 +116,7 @@ def jidt_kraskov(self, source, target, opts):
                     history_source, tau_source,
                     delay)
     calc.setObservations(source, target)
-    return calc.computeAverageLocalOfObservations()
+    if local_values:
+        return calc.computeLocalOfPreviousObservations()
+    else:
+        return calc.computeAverageLocalOfObservations()    
