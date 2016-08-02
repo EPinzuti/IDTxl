@@ -76,7 +76,8 @@ def opencl_kraskov(self, var1, var2, conditional=None, n_chunks=1, opts=None):
     theiler_t = int(opts.get('theiler_t', 0)) # TODO necessary?
     noise_level = np.float32(opts.get('noise_level', 1e-8))
     gpuid = int(opts.get('gpuid', 0))
-    nchunkspergpu = int(opts.get('nchunkspergpu', 1))
+    nchunkspergpu = n_chunks  # TODO is there a case where it makes sense to have
+                              # these two distinct parameters?
 
 # If no conditional is passed, compute and return the mi:
 # this code is a copy of the one in estimatos_mi look there for comments

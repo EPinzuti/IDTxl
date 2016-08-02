@@ -139,7 +139,7 @@ def test_cmi_no_c_estimator_ocl():
 
     The estimator should fall back to MI estiamtion and provide the correct result
     """
-    n = 4000
+    n = 4001 # This needs to be odd as we loose one sample when shifting signals
     cov = 0.4
     source_1 = [rn.normalvariate(0, 1) for r in range(n)]  # correlated src
     target = [sum(pair) for pair in zip(
@@ -174,7 +174,7 @@ def test_compare_opencl_jidt_implementation():
     source_1 = [rn.normalvariate(0, 1) for r in range(n)]  # correlated src
     target = [sum(pair) for pair in zip(
         [cov * y for y in source_1],
-        [(1 - cov) * y for y in [rn.normalvariate(0, 1) for r in range(n)]])]
+        [(1 - cov) * y for y in [rn.normalvariate(0, 1) for r in range(n)]])]    
     # Cast everything to numpy so the idtxl estimator understands it.
     source_1 = np.expand_dims(np.array(source_1), axis=1)
     target = np.expand_dims(np.array(target), axis=1)
